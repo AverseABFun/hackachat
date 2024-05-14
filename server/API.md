@@ -2,7 +2,7 @@
 
 All requests and responses(except when otherwise marked) are in JSON. All connections should be over HTTPS or WSS
 
-## `/status`
+## `/v1/status`
 
 Request: `(empty)`
 
@@ -19,7 +19,7 @@ Example response:
 }
 ```
 
-## `/chat/createMessage`
+## `/v1/chat/createMessage`
 
 Example request:
 ```json
@@ -53,7 +53,7 @@ base64url(userId+":"+interactionToken+";"+sha512hmac(data=username+salt, hmac=pa
 ```
 where each user id and the interaction token are UUIDs
 
-## `/wss`
+## `/v1/wss`
 
 All messages and responses should be followed by `\EOF` and that string should NOT be in any json. The recommended way to scrub it is to replace it with `\\EOF`.
 
@@ -143,6 +143,8 @@ aes256(JSON.stringify({
 }), cipherMode="GCM", tagLen=128, keySize=256, key=secretChannelKey.replaceAll("-", ""), iv=vectorGenerator(messageId, secretChannelKey))
 ```
 
+The `message` field should be in UTF-8; however, all control characters should be kept except for the null character and any that might break things in the server or client, which are up to the server and client to decide. The only control characters that have to be allowed are unicode seperators and Cc control codes(except for the previously mentioned null character), minus any deprecated characters.
+
 Note: UNDER NO CIRCUMSTANCES SHOULD THE `secretChannelKey` BECOME KNOWN TO THE SERVER. ALL ENCRYPTION AND DECRYPTION SHOULD ONLY BE DONE ON THE CLIENT.
 
 The `vectorGenerator` should be implemented like this:
@@ -150,7 +152,7 @@ The `vectorGenerator` should be implemented like this:
 return random_seed.create(messageId+secretChannelKey).string(16)
 ```
 
-The `random` function should be an implementation of [GRC's UHE PRNG](https://www.grc.com/otg/uheprng.htm) due to its high entropy and arbitary seed. An example encryptor is in `encryption.js`.
+The random function should be an implementation of [GRC's UHE PRNG](https://www.grc.com/otg/uheprng.htm) due to its high entropy and arbitary seed. An example encryptor is in `encryption.js`.
 
 The server can also send unencrypted messages, but due to the high security(hopefully) the server cannot read sent messages. Unencrypted messages just have all of the fields in encrypted data `unencrypted: true`. Also, the user field should always be `00000000-0000-0000-0000-000000000000` as ONLY the server should create unencrypted messages(except for commands, described further down), and the client should allow disabling showing unencrypted messages. An example would be:
 ```json
